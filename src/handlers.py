@@ -4,6 +4,7 @@ from typing import Any
 
 from pyrogram import Client
 from pyrogram.enums import ParseMode
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from .clients import clear_clients
 from src.config import load_config, save_config
@@ -13,184 +14,14 @@ from .utils import create_tracked_task, delete_later
 from . import vocab
 
 
-async def do_translate_and_edit(
-    message: Any,
-    original_text: str,
-    target_langs_str: str,
-    mode: str = "append",
-    skip_if_target: bool = False,
-) -> None:
-    config = load_config()
-    current_engine = config.get("engine", "gemini")
-    target_langs = [l.strip() for l in target_langs_str.split(",") if l.strip()]
+HELP_MAIN = """\
+🤖 **高可用多语翻译网关**
 
-    if skip_if_target and len(target_langs) == 1:
-        if is_same_language(original_text, target_langs[0]):
-            return
-
-    text_stripped = original_text.strip()
-    if text_stripped and text_stripped.isdigit():
-        return
-
-    if text_stripped and all(c in "0123456789.,!?@#$%^&*()+-=/<>'\"[]{}:;|~` \n\t" for c in text_stripped):
-        return
-
-    try:
-        loading = f"<blockquote>⏳ 翻译中 ({current_engine.upper()})...</blockquote>"
-        await message.edit_text(
-            f"{original_text}\n{loading}" if mode == "append" else loading,
-            parse_mode=ParseMode.HTML,
-        )
-        results = await asyncio.gather(
-            *[translate_text_with_fallback(original_text, lang, current_engine) for lang in target_langs]
-        )
-        final_blocks: list[str] = []
-        has_error = False
-        for lang, result in zip(target_langs, results):
-            if result.startswith("ERROR:"):
-                has_error = True
-                final_blocks.append(f"<blockquote>❌ [{lang.upper()}] 翻译失败</blockquote>")
-            else:
-                prefix = f"<b>[{lang.upper()}]</b> " if len(target_langs) > 1 else ""
-                final_blocks.append(f"<blockquote>{prefix}{result}</blockquote>")
-        final_text = (
-            f"{original_text}\n" + "\n".join(final_blocks)
-            if mode == "append" else "\n\n".join(final_blocks)
-        )
-        await message.edit_text(final_text, parse_mode=ParseMode.HTML)
-        if has_error:
-            await asyncio.sleep(5)
-            await message.edit_text(original_text)
-    except Exception as e:
-        import logging
-        logging.exception("do_translate_and_edit failed")
-        await message.edit_text(f"{original_text}\n\n⚠️ 系统异常: {str(e)[:50]}")
-        create_tracked_task(delete_later(message, 5))
-
-
-HELP_TEXT = """\
-🤖 **高可用多语翻译网关 · 完整指令手册**
-⚙️ 引擎: `{engine}` · 模型: `{model_display}`
-🌐 母语: `{home_lang}` · 默认外语: `{default_lang}`
+⚙️ 引擎: `{engine}` | 🌐 母语: `{home_lang}` | 默认外语: `{default_lang}`
 🔄 自动模式: {auto_status}
-🔌 自定义引擎: `{custom_list}`
 
-━━━━━━━━━━━━━━━━━━━━━━━
-📝 **基础翻译 · 追加模式**
-翻译结果追加在原文下方
+选择下方按钮查看对应命令"""
 
-`.tr <文本>` — 翻译为默认外语
-  例: `.tr 今天天气真好`
-
-`.t <语言> <文本>` — 翻译为指定语言
-  例: `.t en 你好世界`
-  例: `.t ja,ko,en 你好` ← 同时译多语
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🔄 **基础翻译 · 替换模式**
-原文被翻译结果完全替换
-
-`.rr <文本>` — 替换为默认外语
-  例: `.rr 今天天气真好`
-
-`.r <语言> <文本>` — 替换为指定语言
-  例: `.r ja 我喜欢猫`
-
-━━━━━━━━━━━━━━━━━━━━━━━
-💬 **翻译他人消息**
-
-`.tl` — 翻译你正在回复的消息（译为母语）
-  先回复一条消息，再发 `.tl`
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🤖 **自动模式**
-开启后，每条发出的消息自动处理。
-tr/rr 模式内置智能跳过：如果消息已是目标
-语言，则自动跳过，不做任何修改。
-
-`.auto swap` — 🌟 **智能双向互译** (最推荐)
-  发中文 → 自动追加外语翻译
-  发日文/英文等 → 自动追加中文翻译
-
-`.auto tr` — 追加默认外语 (已是目标语则跳过)
-`.auto rr` — 替换为默认外语 (已是目标语则跳过)
-`.auto t ja` — 追加日语 (已是日语则跳过)
-`.auto r ko` — 替换为韩语
-`.auto off` — 🛑 关闭自动模式
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🔍 **检测与诊断**
-
-`.detect` — 准确识别语言
-  例: `.detect 多分風` → `ja` ✅
-  或: 回复消息后发 `.detect`
-
-`.ping` — 测试所有引擎延迟
-`.status` — 查看所有当前配置
-
-━━━━━━━━━━━━━━━━━━━━━━━
-📋 **消息工具**
-
-`.copy` — 复制回复消息的原文
-  先回复一条消息，再发 `.copy`
-
-`.len` — 统计字数/字符数
-  例: `.len 你好世界` 或回复后发 `.len`
-
-━━━━━━━━━━━━━━━━━━━━━━━
-⚙️ **系统配置**
-
-`.setlang <代码>` — 设置默认外语
-  例: `.setlang ko` / `.setlang en`
-
-`.sethome <代码>` — 设置母语 (swap判断用)
-  例: `.sethome zh-CN`
-
-`.setengine <名称>` — 切换引擎
-  可选: `gemini` / `openai` / `google` / 自定义
-
-`.setmodel <模型名>` — 修改当前引擎模型
-  例: `.setmodel gpt-4o`
-
-`.setkey <openai/gemini> <KEY>` — 更新 API Key
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🔌 **自定义引擎 (兼容 OpenAI API 格式)**
-
-`.addapi <名> <URL> <Key> <模型>` — 添加
-  例: `.addapi grok https://api.x.ai/v1 xai-xxx grok-3`
-
-`.editapi <名> <URL> <Key> <模型>` — 修改
-`.delapi <名>` — 删除
-
-━━━━━━━━━━━━━━━━━━━━━━━
-📚 **词汇学习**
-
-`.vocab add <单词> <翻译> [例句]` — 添加单词
-  例: `.vocab add 猫 cat`
-  例: `.vocab add 食べる たべる 吃饭`
-
-`.vocab list [数量]` — 查看词汇表
-  例: `.vocab list 20`
-
-`.vocab del <ID>` — 删除单词
-  例: `.vocab del 1234567890`
-
-`.vocab stats` — 学习统计
-
-`.vocab review` — 复习今日单词 (艾宾浩斯遗忘曲线)
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🎯 **测验与练习**
-
-`.quiz` — 单词测验 (选择题)
-  需要至少 4 个已复习过的单词
-
-`.write <语言> <文本>` — 写作检查
-  例: `.write ja こんにちは`
-
-━
-"""
 
 
 async def help_cmd(client: Client, message: Any) -> None:
@@ -198,24 +29,132 @@ async def help_cmd(client: Client, message: Any) -> None:
     engine = config.get("engine", "gemini")
     home_lang = config.get("home_lang", "zh-CN")
     default_lang = config.get("default_lang", "ja")
-    model_display = (
-        config.get("models", {}).get(engine, "默认")
-        if engine in ("openai", "gemini")
-        else config.get("custom_engines", {}).get(engine, {}).get("model", "未知")
-    )
     auto = config.get("auto_cmd", "")
     auto_status = f"✅ `.{auto}`" if auto else "❌ 关闭"
-    custom_list = ", ".join(config.get("custom_engines", {}).keys()) or "无"
 
-    help_text = HELP_TEXT.format(
+    help_text = HELP_MAIN.format(
         engine=engine,
-        model_display=model_display,
         home_lang=home_lang,
         default_lang=default_lang,
         auto_status=auto_status,
-        custom_list=custom_list,
     )
-    await message.edit_text(help_text, parse_mode=ParseMode.MARKDOWN)
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📝 翻译", callback_data="help_trans"), InlineKeyboardButton("🔄 自动", callback_data="help_auto")],
+        [InlineKeyboardButton("📋 工具", callback_data="help_tool"), InlineKeyboardButton("⚙️ 设置", callback_data="help_set")],
+        [InlineKeyboardButton("📚 词汇", callback_data="help_vocab"), InlineKeyboardButton("🎯 测验", callback_data="help_quiz")],
+    ])
+    await message.edit_text(help_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+
+
+HELP_TRANS = """\
+📝 **翻译命令**
+
+`.tr <文本>` — 翻译为默认外语
+  例: `.tr 今天天气真好`
+
+`.t <语言> <文本>` — 翻译为指定语言
+  例: `.t en 你好世界`
+  例: `.t ja,ko,en 你好`
+
+`.rr <文本>` — 替换为默认外语
+
+`.r <语言> <文本>` — 替换为指定语言
+
+`.tl` — 翻译回复的消息（译为母语）"""
+
+HELP_AUTO = """\
+🔄 **自动模式**
+
+`.auto swap` — 🌟 智能双向互译
+  发中文 → 自动追加外语
+  发外语 → 自动追加中文
+
+`.auto tr` — 追加默认外语
+`.auto rr` — 替换为默认外语
+`.auto t ja` — 追加指定语言
+`.auto off` — 关闭"""
+
+HELP_TOOL = """\
+📋 **消息工具**
+
+`.detect` — 识别语言
+  例: `.detect 你好` → `zh`
+
+`.ping` — 测试引擎延迟
+
+`.copy` — 复制回复的消息
+
+`.len` — 统计字数"""
+
+HELP_SET = """\
+⚙️ **系统设置**
+
+`.setlang <代码>` — 默认外语
+  例: `.setlang ko`
+
+`.sethome <代码>` — 母语
+  例: `.sethome zh-CN`
+
+`.setengine <名称>` — 切换引擎
+  可选: gemini / openai / google
+
+`.setmodel <模型>` — 修改模型
+
+`.setkey <引擎> <Key>` — 更新 API Key
+
+`.addapi <名> <URL> <Key> <模型>` — 添加引擎"""
+
+HELP_VOCAB = """\
+📚 **词汇学习**
+
+`.vocab add <单词> <翻译> [例句]` — 添加
+  例: `.vocab add 猫 cat`
+
+`.vocab list [数量]` — 查看列表
+
+`.vocab del <ID>` — 删除
+
+`.vocab stats` — 学习统计
+
+`.vocab review` — 复习单词"""
+
+HELP_QUIZ = """\
+🎯 **测验练习**
+
+`.quiz` — 单词测验
+  需要至少 4 个已复习单词
+
+`.write <语言> <文本>` — 写作检查
+  例: `.write ja こんにちは`"""
+
+
+async def help_callback(client: Client, callback_query: Any) -> None:
+    data = callback_query.data
+    
+    if data == "help_trans":
+        text = HELP_TRANS
+    elif data == "help_auto":
+        text = HELP_AUTO
+    elif data == "help_tool":
+        text = HELP_TOOL
+    elif data == "help_set":
+        text = HELP_SET
+    elif data == "help_vocab":
+        text = HELP_VOCAB
+    elif data == "help_quiz":
+        text = HELP_QUIZ
+    else:
+        await callback_query.answer()
+        return
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📝 翻译", callback_data="help_trans"), InlineKeyboardButton("🔄 自动", callback_data="help_auto")],
+        [InlineKeyboardButton("📋 工具", callback_data="help_tool"), InlineKeyboardButton("⚙️ 设置", callback_data="help_set")],
+        [InlineKeyboardButton("📚 词汇", callback_data="help_vocab"), InlineKeyboardButton("🎯 测验", callback_data="help_quiz")],
+    ])
+    await callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+    await callback_query.answer()
 
 
 async def status_cmd(client: Client, message: Any) -> None:
