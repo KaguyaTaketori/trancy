@@ -85,7 +85,6 @@ trancy/
 │   ├── config.py       # 設定管理
 │   ├── handlers.py     # メッセージハンドラー
 │   ├── language.py     # 言語ユーティリティ
-│   ├── search.py       # 検索機能
 │   ├── translation.py  # 翻訳エンジン
 │   └── utils.py        # ユーティリティ関数
 ├── LICENSE             # GPLv3 ライセンス
@@ -141,12 +140,6 @@ trancy/
 | `.addapi <名> <URL> <Key> <モデル>` | カスタムエンジンを追加 |
 | `.editapi <名> <URL> <Key> <モデル>` | カスタムエンジンを編集 |
 | `.delapi <名>` | カスタムエンジンを削除 |
-
-### 検索
-| コマンド | 説明 |
-|---------|------|
-| `.search <クエリ>` | Web 検索 |
-| `.sumsearch <クエリ>` | AI まとめ検索 |
 
 ## 🤝 コントリビューション
 

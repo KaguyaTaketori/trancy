@@ -8,7 +8,6 @@ from pyrogram.enums import ParseMode
 from .clients import clear_clients
 from src.config import load_config, save_config
 from .language import detect_language, detect_swap_target, is_same_language
-from .search import search_web, format_search_results, get_all_cached_results, get_total_results, summarize_results
 from .translation import _translate_with_engine, translate_text_with_fallback
 from .utils import create_tracked_task, delete_later
 
@@ -155,17 +154,6 @@ tr/rr 模式内置智能跳过：如果消息已是目标
 
 `.editapi <名> <URL> <Key> <模型>` — 修改
 `.delapi <名>` — 删除
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🌐 **网页搜索**
-
-`.search <关键词>` — 搜索互联网
-  例: `.search Python 教程`
-  例: `.search latest AI news`
-  例: `.search Python 2` — 查看第2页
-
-`.sumsearch <关键词>` — AI 总结搜索结果
-  例: `.sumsearch Python 入门`
 
 ━
 """
@@ -465,85 +453,3 @@ async def auto_translate_handler(client: Client, message: Any) -> None:
         await do_translate_and_edit(message, text, parts[1], mode="append", skip_if_target=True)
     elif cmd == "r" and len(parts) > 1:
         await do_translate_and_edit(message, text, parts[1], mode="replace", skip_if_target=True)
-
-
-async def search_cmd(client: Client, message: Any) -> None:
-    parts = message.text.split(maxsplit=2)
-    if len(parts) < 2 or not parts[1].strip():
-        await message.edit_text("❌ 用法: `.search <查询内容> [页码]`")
-        create_tracked_task(delete_later(message, 5))
-        return
-    
-    query = parts[1].strip()
-    page = 1
-    if len(parts) == 3:
-        try:
-            page = int(parts[2].strip())
-            if page < 1:
-                page = 1
-        except ValueError:
-            query = parts[1].strip() + " " + parts[2].strip()
-            page = 1
-    
-    await message.edit_text(f"🔍 正在搜索: `{query}` (第 {page} 页)...")
-    
-    results = await search_web(query, max_results=5, page=page)
-    total = get_total_results(query)
-    text, keyboard = format_search_results(results, query, page=page, max_results=5, total=total)
-    
-    await message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
-    create_tracked_task(delete_later(message, 60))
-
-
-async def sumsearch_cmd(client: Client, message: Any) -> None:
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        await message.edit_text("❌ 用法: `.sumsearch <查询内容>`")
-        create_tracked_task(delete_later(message, 5))
-        return
-    
-    query = parts[1].strip()
-    await message.edit_text(f"🔍 正在搜索并总结: `{query}`...")
-    
-    results = await search_web(query, max_results=10, page=1)
-    if not results:
-        await message.edit_text("❌ 未找到相关结果")
-        create_tracked_task(delete_later(message, 10))
-        return
-    
-    config = load_config()
-    engine = config.get("engine", "gemini")
-    
-    await message.edit_text(f"🔍 搜索完成，正在使用 {engine.upper()} 总结...")
-    
-    summary = await summarize_results(query, results, engine, config)
-    
-    formatted = f"🔍 **搜索结果总结**\n\n查询: `{query}`\n\n{summary}"
-    
-    await message.edit_text(formatted, parse_mode=ParseMode.MARKDOWN)
-    create_tracked_task(delete_later(message, 120))
-
-
-async def search_callback(client: Client, callback_query: Any) -> None:
-    data = callback_query.data
-    if data == "noop":
-        await callback_query.answer()
-        return
-    
-    if data.startswith("search_"):
-        query, page_str = data[7:].rsplit("_", 1)
-        try:
-            page = int(page_str)
-            if page < 1:
-                page = 1
-        except ValueError:
-            page = 1
-        
-        results = await search_web(query, max_results=5, page=page)
-        total = get_total_results(query)
-        text, keyboard = format_search_results(results, query, page=page, max_results=5, total=total)
-        
-        await callback_query.message.edit_text(
-            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
-        )
-    await callback_query.answer()

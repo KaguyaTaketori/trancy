@@ -91,7 +91,6 @@ trancy/
 │   ├── config.py       # Configuration management
 │   ├── handlers.py     # Message handlers
 │   ├── language.py     # Language utilities
-│   ├── search.py       # Search functionality
 │   ├── translation.py  # Translation engine
 │   └── utils.py        # Utility functions
 ├── LICENSE             # GPLv3 License
@@ -147,12 +146,6 @@ trancy/
 | `.addapi <name> <url> <key> <model>` | Add custom engine |
 | `.editapi <name> <url> <key> <model>` | Edit custom engine |
 | `.delapi <name>` | Delete custom engine |
-
-### Search
-| Command | Description |
-|---------|-------------|
-| `.search <query>` | Web search |
-| `.sumsearch <query>` | AI summarized search |
 
 ## 🤝 Contributing
 

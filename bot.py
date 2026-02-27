@@ -34,9 +34,6 @@ from src.handlers import (
     t_cmd,
     tr_cmd,
     translate_reply_cmd,
-    search_cmd,
-    sumsearch_cmd,
-    search_callback,
 )
 
 logging.basicConfig(
@@ -107,14 +104,6 @@ app.on_message(filters.me & filters.text & filters.command("editapi", prefixes="
 app.on_message(filters.me & filters.text & filters.command("delapi", prefixes="."))(
     delapi_cmd
 )
-app.on_message(filters.me & filters.text & filters.command("search", prefixes="."))(
-    search_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("sumsearch", prefixes="."))(
-    sumsearch_cmd
-)
-
-app.on_callback_query()(search_callback)
 
 app.on_message(filters.me & filters.text & filters.regex(r"^\.tl$"))(
     translate_reply_cmd
