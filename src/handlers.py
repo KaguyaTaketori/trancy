@@ -39,11 +39,18 @@ async def help_cmd(client: Client, message: Any) -> None:
         auto_status=auto_status,
     )
     
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📝 翻译", callback_data="help_trans"), InlineKeyboardButton("🔄 自动", callback_data="help_auto")],
-        [InlineKeyboardButton("📋 工具", callback_data="help_tool"), InlineKeyboardButton("⚙️ 设置", callback_data="help_set")],
-        [InlineKeyboardButton("📚 词汇", callback_data="help_vocab"), InlineKeyboardButton("🎯 测验", callback_data="help_quiz")],
-    ])
+    keyboard = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("📝 翻译", callback_data="help_trans"),
+            InlineKeyboardButton("🔄 自动", callback_data="help_auto"),
+        ], [
+            InlineKeyboardButton("📋 工具", callback_data="help_tool"),
+            InlineKeyboardButton("⚙️ 设置", callback_data="help_set"),
+        ], [
+            InlineKeyboardButton("📚 词汇", callback_data="help_vocab"),
+            InlineKeyboardButton("🎯 测验", callback_data="help_quiz"),
+        ]]
+    )
     await message.edit_text(help_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
 
 
@@ -148,11 +155,18 @@ async def help_callback(client: Client, callback_query: Any) -> None:
         await callback_query.answer()
         return
     
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📝 翻译", callback_data="help_trans"), InlineKeyboardButton("🔄 自动", callback_data="help_auto")],
-        [InlineKeyboardButton("📋 工具", callback_data="help_tool"), InlineKeyboardButton("⚙️ 设置", callback_data="help_set")],
-        [InlineKeyboardButton("📚 词汇", callback_data="help_vocab"), InlineKeyboardButton("🎯 测验", callback_data="help_quiz")],
-    ])
+    keyboard = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("📝 翻译", callback_data="help_trans"),
+            InlineKeyboardButton("🔄 自动", callback_data="help_auto"),
+        ], [
+            InlineKeyboardButton("📋 工具", callback_data="help_tool"),
+            InlineKeyboardButton("⚙️ 设置", callback_data="help_set"),
+        ], [
+            InlineKeyboardButton("📚 词汇", callback_data="help_vocab"),
+            InlineKeyboardButton("🎯 测验", callback_data="help_quiz"),
+        ]]
+    )
     await callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
     await callback_query.answer()
 
@@ -586,7 +600,7 @@ async def vocab_review_response(client: Client, message: Any) -> None:
     
     word_text = match.group(1)
     
-    from .vocab import get_words, review_word
+    from .vocab import get_words, review_word, get_due_words
     words = get_words(limit=100)
     for w in words:
         if w.get("word") == word_text:
