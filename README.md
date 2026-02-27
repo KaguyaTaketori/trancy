@@ -1,6 +1,12 @@
 # Trancy 🤖
 
 <p align="center">
+  <a href="README.md">English</a> •
+  <a href="README.zh.md">中文</a> •
+  <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/KaguyaTaketori/trancy">
     <img src="https://img.shields.io/github/stars/KaguyaTaketori/trancy?style=flat-square&logo=github" alt="Stars">
   </a>
@@ -94,10 +100,10 @@ trancy/
 
 ## 🛠️ Available Commands
 
-| Command-|-------------|
+| Command | Description |
+|---------|-------------|
 | `/start` | Start the bot |
-| `/ | Description |
-|--------help` | Show help message |
+| `/help` | Show help message |
 | `/lang` | Change language |
 | `/translate` | Translate text |
 
