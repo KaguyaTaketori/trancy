@@ -21,7 +21,6 @@ from src.handlers import (
     detect_cmd,
     editapi_cmd,
     help_cmd,
-    help_callback,
     len_cmd,
     ping_cmd,
     r_cmd,
@@ -121,7 +120,6 @@ app.on_message(filters.me & filters.text & filters.command("write", prefixes="."
 app.on_message(filters.me & filters.text & filters.reply & filters.regex(r"^[1-5]$"))(
     vocab_review_response
 )
-app.on_callback_query()(help_callback)
 
 app.on_message(filters.me & filters.text & filters.regex(r"^\.tl$"))(
     translate_reply_cmd
