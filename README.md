@@ -29,7 +29,6 @@
 
 - 🌐 **Multi-language Translation** - Translate between dozens of languages
 - 📚 **Language Learning** - Vocabulary building and study tools
-- 🔍 **Search Functionality** - Quick search capabilities
 - ⚡ **Fast & Efficient** - Built with Pyrogram for optimal performance
 - 🎯 **User-friendly** - Intuitive command interface
 
