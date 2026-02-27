@@ -100,12 +100,59 @@ trancy/
 
 ## 🛠️ Available Commands
 
+### Translation
 | Command | Description |
 |---------|-------------|
-| `/start` | Start the bot |
-| `/help` | Show help message |
-| `/lang` | Change language |
-| `/translate` | Translate text |
+| `.tr <text>` | Translate to default language (append mode) |
+| `.t <lang> <text>` | Translate to specified language (append mode) |
+| `.rr <text>` | Translate to default language (replace mode) |
+| `.r <lang> <text>` | Translate to specified language (replace mode) |
+| `.tl` | Translate replied message to home language |
+
+### Auto Mode
+| Command | Description |
+|---------|-------------|
+| `.auto swap` | 🌟 Smart bidirectional translation |
+| `.auto tr` | Append default language |
+| `.auto rr` | Replace with default language |
+| `.auto t <lang>` | Append specified language |
+| `.auto r <lang>` | Replace with specified language |
+| `.auto off` | 🛑 Turn off auto mode |
+
+### Detection & Diagnostics
+| Command | Description |
+|---------|-------------|
+| `.detect` | Detect language of text |
+| `.ping` | Test all translation engines |
+| `.status` | View current configuration |
+
+### Message Tools
+| Command | Description |
+|---------|-------------|
+| `.copy` | Copy replied message text |
+| `.len` | Count characters/words/lines |
+
+### Settings
+| Command | Description |
+|---------|-------------|
+| `.setlang <code>` | Set default foreign language |
+| `.sethome <code>` | Set home language (for swap) |
+| `.setengine <name>` | Switch translation engine |
+| `.setmodel <model>` | Change current model |
+| `.setkey <engine> <key>` | Update API key |
+
+### Custom Engines
+| Command | Description |
+|---------|-------------|
+| `.addapi <name> <url> <key> <model>` | Add custom engine |
+| `.editapi <name> <url> <key> <model>` | Edit custom engine |
+| `.delapi <name>` | Delete custom engine |
+
+### Search
+| Command | Description |
+|---------|-------------|
+| `.search <query>` | Web search |
+| `.sumsearch <query>` | AI summarized search |
 
 ## 🤝 Contributing
 
