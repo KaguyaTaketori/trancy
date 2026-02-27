@@ -1,0 +1,23 @@
+{
+  "default_lang": "ja",
+  "home_lang": "zh-CN",
+  "engine": "gemini",
+  "custom_engines": {},
+  "models": {
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-3-flash-preview"
+  },
+  "auto_cmd": "",
+  "api_keys": {
+    "openai": "",
+    "gemini": ""
+  },
+  "urls": {
+    "openai": ""
+  },
+  "keys": {
+    "openai": [],
+    "gemini": [],
+    "groq": []
+  }
+}
