@@ -10,6 +10,7 @@ from src.config import load_config, save_config
 from .language import detect_language, detect_swap_target, is_same_language
 from .translation import _translate_with_engine, translate_text_with_fallback
 from .utils import create_tracked_task, delete_later
+from . import vocab
 
 
 async def do_translate_and_edit(
@@ -26,6 +27,13 @@ async def do_translate_and_edit(
     if skip_if_target and len(target_langs) == 1:
         if is_same_language(original_text, target_langs[0]):
             return
+
+    text_stripped = original_text.strip()
+    if text_stripped and text_stripped.isdigit():
+        return
+
+    if text_stripped and all(c in "0123456789.,!?@#$%^&*()+-=/<>'\"[]{}:;|~` \n\t" for c in text_stripped):
+        return
 
     try:
         loading = f"<blockquote>⏳ 翻译中 ({current_engine.upper()})...</blockquote>"
@@ -154,6 +162,32 @@ tr/rr 模式内置智能跳过：如果消息已是目标
 
 `.editapi <名> <URL> <Key> <模型>` — 修改
 `.delapi <名>` — 删除
+
+━━━━━━━━━━━━━━━━━━━━━━━
+📚 **词汇学习**
+
+`.vocab add <单词> <翻译> [例句]` — 添加单词
+  例: `.vocab add 猫 cat`
+  例: `.vocab add 食べる たべる 吃饭`
+
+`.vocab list [数量]` — 查看词汇表
+  例: `.vocab list 20`
+
+`.vocab del <ID>` — 删除单词
+  例: `.vocab del 1234567890`
+
+`.vocab stats` — 学习统计
+
+`.vocab review` — 复习今日单词 (艾宾浩斯遗忘曲线)
+
+━━━━━━━━━━━━━━━━━━━━━━━
+🎯 **测验与练习**
+
+`.quiz` — 单词测验 (选择题)
+  需要至少 4 个已复习过的单词
+
+`.write <语言> <文本>` — 写作检查
+  例: `.write ja こんにちは`
 
 ━
 """
@@ -453,3 +487,263 @@ async def auto_translate_handler(client: Client, message: Any) -> None:
         await do_translate_and_edit(message, text, parts[1], mode="append", skip_if_target=True)
     elif cmd == "r" and len(parts) > 1:
         await do_translate_and_edit(message, text, parts[1], mode="replace", skip_if_target=True)
+
+
+async def vocab_cmd(client: Client, message: Any) -> None:
+    parts = message.text.split(maxsplit=3)
+    
+    if len(parts) == 1:
+        await message.edit_text(
+            "📚 **词汇管理**\n\n"
+            "`.vocab add <单词> <翻译> [例句]` — 添加单词\n"
+            "`.vocab list [数量]` — 查看词汇表\n"
+            "`.vocab del <ID>` — 删除单词\n"
+            "`.vocab stats` — 学习统计\n"
+            "`.vocab review` — 复习今日单词\n\n"
+            "`.quiz` — 开始测验\n"
+            "`.write <语言> <文本>` — 写作检查",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        create_tracked_task(delete_later(message, 20))
+        return
+    
+    action = parts[1].strip().lower()
+    
+    if action == "add":
+        if len(parts) < 4:
+            await message.edit_text("❌ 用法: `.vocab add <单词> <翻译> [例句]`")
+            create_tracked_task(delete_later(message, 5))
+            return
+        
+        word = parts[2].strip()
+        translation = parts[3].strip()
+        example = parts[4].strip() if len(parts) > 4 else ""
+        
+        from .vocab import add_word
+        new_word = add_word(word, translation, example)
+        
+        example_text = f"例句: {new_word['example']}" if new_word['example'] else ""
+        await message.edit_text(
+            f"✅ 单词已添加!\n\n"
+            f"**{new_word['word']}** — {new_word['translation']}\n"
+            f"{example_text}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        create_tracked_task(delete_later(message, 15))
+    
+    elif action == "list":
+        from .vocab import get_words
+        limit = int(parts[2].strip()) if len(parts) > 2 else 20
+        words = get_words(limit=limit)
+        
+        if not words:
+            await message.edit_text("📭 词汇表为空，请先添加单词!")
+            create_tracked_task(delete_later(message, 5))
+            return
+        
+        lines = ["📚 **词汇表**\n"]
+        for w in words:
+            lines.append(f"`{w['id']}` **{w['word']}** — {w['translation']}")
+            if w.get("example"):
+                lines[-1] += f"\n   例: {w['example'][:50]}"
+            lines[-1] += "\n"
+        
+        await message.edit_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+        create_tracked_task(delete_later(message, 30))
+    
+    elif action == "del":
+        if len(parts) < 3:
+            await message.edit_text("❌ 用法: `.vocab del <ID>`")
+            create_tracked_task(delete_later(message, 5))
+            return
+        
+        try:
+            word_id = int(parts[2].strip())
+        except ValueError:
+            await message.edit_text("❌ ID 必须是数字")
+            create_tracked_task(delete_later(message, 5))
+            return
+        
+        from .vocab import delete_word
+        if delete_word(word_id):
+            await message.edit_text("✅ 单词已删除")
+        else:
+            await message.edit_text("❌ 未找到该单词")
+        create_tracked_task(delete_later(message, 5))
+    
+    elif action == "stats":
+        from .vocab import get_stats
+        stats = get_stats()
+        
+        accuracy = 0
+        if stats.get("quiz_total", 0) > 0:
+            accuracy = int(stats["quiz_correct"] / stats["quiz_total"] * 100)
+        
+        await message.edit_text(
+            "📊 **学习统计**\n\n"
+            f"📚 总单词数: **{stats.get('total_words', 0)}**\n"
+            f"📝 待复习: **{stats.get('due_words', 0)}**\n"
+            f"🔄 复习次数: **{stats.get('total_reviews', 0)}**\n\n"
+            f"✅ 测验正确率: **{accuracy}%** ({stats.get('quiz_correct', 0)}/{stats.get('quiz_total', 0)})\n"
+            f"🔥 连续学习: **{stats.get('streak_days', 0)}** 天",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        create_tracked_task(delete_later(message, 20))
+    
+    elif action == "review":
+        from .vocab import get_due_words
+        due = get_due_words()
+        
+        if not due:
+            await message.edit_text("✅ 暂无待复习单词!")
+            create_tracked_task(delete_later(message, 5))
+            return
+        
+        word = due[0]
+        import datetime
+        next_review = datetime.datetime.fromtimestamp(word.get("next_review", 0))
+        next_str = next_review.strftime("%m-%d %H:%M")
+        example_text = f"例句: {word['example']}" if word.get('example') else ""
+        
+        await message.edit_text(
+            f"📖 **复习单词**\n\n"
+            f"**{word['word']}**\n\n"
+            f"翻译: ||{word['translation']}||\n"
+            f"{example_text}\n\n"
+            f"⏰ 下次复习: {next_str}\n\n"
+            "回复数字评分:\n"
+            "1️⃣ 完全忘记\n"
+            "2️⃣ 记得但不确定\n"
+            "3️⃣ 记得但反应慢\n"
+            "4️⃣ 记得很清楚\n"
+            "5️⃣ 完美记住",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    else:
+        await message.edit_text("❌ 未知命令，可用: add, list, del, stats, review")
+        create_tracked_task(delete_later(message, 5))
+
+
+async def vocab_review_response(client: Client, message: Any) -> None:
+    if not message.reply_to_message or not message.reply_to_message.text:
+        return
+    
+    reply_text = message.reply_to_message.text
+    if "📖 **复习单词**" not in reply_text:
+        return
+    
+    try:
+        quality = int(message.text.strip())
+        if quality < 1 or quality > 5:
+            return
+    except ValueError:
+        return
+    
+    import re
+    match = re.search(r'\n\n\*\*([^*]+)\*\*\n', reply_text)
+    if not match:
+        return
+    
+    word_text = match.group(1)
+    
+    from .vocab import get_words, review_word
+    words = get_words(limit=100)
+    for w in words:
+        if w.get("word") == word_text:
+            review_word(w["id"], quality)
+            break
+    
+    due = get_due_words()
+    if due:
+        word = due[0]
+        import datetime
+        next_review = datetime.datetime.fromtimestamp(word.get("next_review", 0))
+        next_str = next_review.strftime("%m-%d %H:%M")
+        example_text = f"例句: {word['example']}" if word.get('example') else ""
+        
+        await message.edit_text(
+            f"📖 **复习单词**\n\n"
+            f"**{word['word']}**\n\n"
+            f"翻译: ||{word['translation']}||\n"
+            f"{example_text}\n\n"
+            f"⏰ 下次复习: {next_str}\n\n"
+            "回复数字评分:\n"
+            "1️⃣ 完全忘记\n"
+            "2️⃣ 记得但不确定\n"
+            "3️⃣ 记得但反应慢\n"
+            "4️⃣ 记得很清楚\n"
+            "5️⃣ 完美记住",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await message.edit_text("✅ 恭喜! 所有单词都已复习完毕!")
+        create_tracked_task(delete_later(message, 5))
+
+
+async def quiz_cmd(client: Client, message: Any) -> None:
+    from .vocab import generate_quiz, record_quiz_result, load_vocab
+    
+    vocab = load_vocab()
+    words = [w for w in vocab.get("words", []) if w.get("repetitions", 0) > 0]
+    
+    if len(words) < 4:
+        await message.edit_text(
+            "❌ 词汇量不足，需要至少 4 个已学习的单词才能开始测验\n"
+            "请先使用 `.vocab add` 添加单词，并用 `.vocab review` 复习几次",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        create_tracked_task(delete_later(message, 10))
+        return
+    
+    questions = generate_quiz(num_questions=5)
+    
+    if not questions:
+        await message.edit_text("❌ 无法生成测验，请先复习一些单词")
+        create_tracked_task(delete_later(message, 5))
+        return
+    
+    q = questions[0]
+    options_text = "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(q["options"]))
+    
+    await message.edit_text(
+        f"📝 **测验** (1/{len(questions)})\n\n"
+        f"**{q['word']}** 的翻译是?\n\n{options_text}\n\n"
+        "回复数字选择答案",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def write_cmd(client: Client, message: Any) -> None:
+    parts = message.text.split(maxsplit=2)
+    
+    if len(parts) < 3:
+        await message.edit_text("❌ 用法: `.write <语言> <文本>`\n例: `.write ja こんにちは`")
+        create_tracked_task(delete_later(message, 5))
+        return
+    
+    lang = parts[1].strip().lower()
+    text = parts[2].strip()
+    
+    from .vocab import check_writing
+    result = check_writing(text, lang)
+    
+    if result["results"]:
+        r = result["results"][0]
+        example_text = f"例句: {r['example']}" if r.get('example') else ""
+        await message.edit_text(
+            f"✅ **写作检查**\n\n"
+            f"你写的: **{text}**\n"
+            f"翻译: {r['translation']}\n"
+            f"{example_text}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await message.edit_text(
+            f"❓ **写作检查**\n\n"
+            f"你写的: **{text}**\n\n"
+            f"该语言词汇库中没有找到匹配\n"
+            f"总词汇量: {result['total_vocab']}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    create_tracked_task(delete_later(message, 15))

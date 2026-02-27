@@ -34,6 +34,10 @@ from src.handlers import (
     t_cmd,
     tr_cmd,
     translate_reply_cmd,
+    vocab_cmd,
+    vocab_review_response,
+    quiz_cmd,
+    write_cmd,
 )
 
 logging.basicConfig(
@@ -103,6 +107,18 @@ app.on_message(filters.me & filters.text & filters.command("editapi", prefixes="
 )
 app.on_message(filters.me & filters.text & filters.command("delapi", prefixes="."))(
     delapi_cmd
+)
+app.on_message(filters.me & filters.text & filters.command("vocab", prefixes="."))(
+    vocab_cmd
+)
+app.on_message(filters.me & filters.text & filters.command("quiz", prefixes="."))(
+    quiz_cmd
+)
+app.on_message(filters.me & filters.text & filters.command("write", prefixes="."))(
+    write_cmd
+)
+app.on_message(filters.me & filters.text & filters.reply & filters.regex(r"^[1-5]$"))(
+    vocab_review_response
 )
 
 app.on_message(filters.me & filters.text & filters.regex(r"^\.tl$"))(

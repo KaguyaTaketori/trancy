@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import Any
 
 from deep_translator import GoogleTranslator
@@ -36,7 +37,8 @@ _PROMPT_TEMPLATE = (
     "你是一个精通多国网络文化的翻译官。\n"
     "【要求】：1. 口吻随性、接地气。 {ja_rule} 3. 俚语替换。"
     " 4. 严禁扭曲原意，必须准确传达语气。 5. 只输出纯翻译结果，无解释。"
-    " 6. 保留原文的emoji表情符号，不要修改或翻译emoji。\n"
+    " 6. 保留原文的emoji表情符号，不要修改或翻译emoji。"
+    " 7. 绝对不要翻译数字/日期/时间，保留原样。\n"
     "【任务】：将以下文本翻译为 [{target_lang_upper}]\n{text}"
 )
 
@@ -58,6 +60,9 @@ async def _translate_with_engine(
 ) -> str:
     ai_prompt = _build_prompt(text, target_lang)
     logger.info("Translating  engine=%s  target=%s", engine, target_lang)
+    
+    if os.getenv("DEBUG"):
+        logger.info("PROMPT: %s", ai_prompt)
 
     if engine == "openai":
         res = await get_openai_client(config).chat.completions.create(

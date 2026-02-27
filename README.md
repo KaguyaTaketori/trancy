@@ -28,7 +28,7 @@
 ## ✨ Features
 
 - 🌐 **Multi-language Translation** - Translate between dozens of languages
-- 📚 **Language Learning** - Vocabulary building and study tools
+- 📚 **Language Learning** - Vocabulary flashcards, spaced repetition, quiz & writing practice
 - ⚡ **Fast & Efficient** - Built with Pyrogram for optimal performance
 - 🎯 **User-friendly** - Intuitive command interface
 
@@ -91,7 +91,8 @@ trancy/
 │   ├── handlers.py     # Message handlers
 │   ├── language.py     # Language utilities
 │   ├── translation.py  # Translation engine
-│   └── utils.py        # Utility functions
+│   ├── utils.py        # Utility functions
+│   └── vocab.py       # Vocabulary & learning tools
 ├── LICENSE             # GPLv3 License
 └── README.md           # This file
 ```
@@ -145,6 +146,17 @@ trancy/
 | `.addapi <name> <url> <key> <model>` | Add custom engine |
 | `.editapi <name> <url> <key> <model>` | Edit custom engine |
 | `.delapi <name>` | Delete custom engine |
+
+### Language Learning
+| Command | Description |
+|---------|-------------|
+| `.vocab add <word> <translation> [example]` | Add word to vocabulary |
+| `.vocab list [limit]` | List vocabulary |
+| `.vocab del <id>` | Delete word |
+| `.vocab stats` | Learning statistics |
+| `.vocab review` | Spaced repetition review |
+| `.quiz` | Vocabulary quiz |
+| `.write <lang> <text>` | Writing practice check |
 
 ## 🤝 Contributing
 
