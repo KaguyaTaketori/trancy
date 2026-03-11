@@ -1,7 +1,11 @@
+import copy
 import json
+import logging
 import os
 import time
 from typing import Any
+
+logger = logging.getLogger("translate_bot")
 
 CONFIG_FILE = "config.json"
 
@@ -25,15 +29,13 @@ def load_config() -> dict[str, Any]:
     now = time.monotonic()
     if _config_cache is not None and (now - _cache_timestamp) < _CACHE_TTL:
         return _config_cache
-    config = {k: v for k, v in DEFAULT_CONFIG.items()}
+    config = copy.deepcopy(DEFAULT_CONFIG)
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 saved = json.load(f)
             config.update(saved)
         except (json.JSONDecodeError, OSError) as e:
-            from logging import getLogger
-            logger = getLogger("translate_bot")
             logger.warning("Could not load config, using defaults: %s", e)
     _config_cache = config
     _cache_timestamp = now
@@ -50,6 +52,4 @@ def save_config(key: str, value: Any) -> None:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
     except OSError as e:
-        from logging import getLogger
-        logger = getLogger("translate_bot")
         logger.error("Failed to save config: %s", e)

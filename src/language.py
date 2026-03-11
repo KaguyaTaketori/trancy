@@ -1,6 +1,5 @@
 import re
 from functools import lru_cache
-from typing import Any
 
 from langdetect import detect as langdetect_detect, LangDetectException
 

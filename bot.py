@@ -6,12 +6,10 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Any
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters
 
-import src.config
 from src.handlers import (
     addapi_cmd,
     auto_cmd,
@@ -63,64 +61,40 @@ except KeyError as missing:
 
 app = Client("my_account", api_id=API_ID, api_hash=API_HASH)
 
-app.on_message(filters.me & filters.text & filters.command("help", prefixes="."))(
-    help_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("status", prefixes="."))(
-    status_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("ping", prefixes="."))(
-    ping_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("detect", prefixes="."))(
-    detect_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("copy", prefixes="."))(
-    copy_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("len", prefixes="."))(
-    len_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("setkey", prefixes="."))(
-    setkey_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("auto", prefixes="."))(
-    auto_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("setengine", prefixes="."))(
-    setengine_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("setmodel", prefixes="."))(
-    setmodel_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("setlang", prefixes="."))(
-    setlang_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("sethome", prefixes="."))(
-    sethome_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("addapi", prefixes="."))(
-    addapi_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("editapi", prefixes="."))(
-    editapi_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("delapi", prefixes="."))(
-    delapi_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("vocab", prefixes="."))(
-    vocab_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("quiz", prefixes="."))(
-    quiz_cmd
-)
-app.on_message(filters.me & filters.text & filters.command("write", prefixes="."))(
-    write_cmd
-)
+# ---------------------------------------------------------------------------
+# Register command handlers via table-driven loop
+# ---------------------------------------------------------------------------
+
+_DOT_COMMANDS: list[tuple[str, object]] = [
+    ("help",      help_cmd),
+    ("status",    status_cmd),
+    ("ping",      ping_cmd),
+    ("detect",    detect_cmd),
+    ("copy",      copy_cmd),
+    ("len",       len_cmd),
+    ("setkey",    setkey_cmd),
+    ("auto",      auto_cmd),
+    ("setengine", setengine_cmd),
+    ("setmodel",  setmodel_cmd),
+    ("setlang",   setlang_cmd),
+    ("sethome",   sethome_cmd),
+    ("addapi",    addapi_cmd),
+    ("editapi",   editapi_cmd),
+    ("delapi",    delapi_cmd),
+    ("vocab",     vocab_cmd),
+    ("quiz",      quiz_cmd),
+    ("write",     write_cmd),
+]
+
+for cmd_name, handler in _DOT_COMMANDS:
+    app.on_message(filters.me & filters.text & filters.command(cmd_name, prefixes="."))(handler)
+
+# Review response (reply with 1-5)
 app.on_message(filters.me & filters.text & filters.reply & filters.regex(r"^[1-5]$"))(
     vocab_review_response
 )
 
+# Regex-based translation commands
 app.on_message(filters.me & filters.text & filters.regex(r"^\.tl$"))(
     translate_reply_cmd
 )
@@ -133,11 +107,12 @@ app.on_message(
     filters.me & filters.text & filters.regex(r"^\.r\s+([a-zA-Z\-,]+)\s+([\s\S]+)")
 )(r_cmd)
 
+# Auto-translate: catch-all for non-command messages
 app.on_message(filters.me & filters.text & ~filters.regex(r"^\."))(
     auto_translate_handler
 )
 
 if __name__ == "__main__":
-    logger.info("🚀 Translation bot starting...")
-    logger.info("🛡️  Auto-fallback gateway standing by...")
+    logger.info("Translation bot starting...")
+    logger.info("Auto-fallback gateway standing by...")
     app.run()
